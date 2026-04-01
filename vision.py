@@ -3,7 +3,7 @@ import cv2
 import time
 
 def main():
-    model = YOLO('best.pt')
+    model = YOLO('ms_bima.pt')
     print("Model loaded successfully")
 
     cap = cv2.VideoCapture(0)
@@ -41,6 +41,20 @@ def main():
 
             annotated_frame = results[0].plot()
 
+            for box in results[0].boxes:
+                x1, y1, x2, y2 = box.xyxy[0].tolist()
+                
+                text_coord = f"X: {int(x1)} Y: {int(y1)}"
+                cv2.putText(
+                    annotated_frame, 
+                    text_coord, 
+                    (int(x1), int(y1) - 20),
+                    cv2.FONT_HERSHEY_SIMPLEX, 
+                    0.5, 
+                    (255, 0, 0), 
+                    1
+                )
+
             cv2.putText(
                 annotated_frame,
                 f'FPS: {fps:.2f}',
@@ -61,7 +75,7 @@ def main():
                 (0, 255, 0),
                 2
             )
-            print(f"FPS : {fps}")
+            # print(f"FPS : {fps}")
 
             cv2.imshow('YOLO Realtime Detection', annotated_frame)
 
