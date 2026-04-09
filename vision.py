@@ -45,6 +45,7 @@ def main():
                 x1, y1, x2, y2 = box.xyxy[0].tolist()
                 
                 text_coord = f"X: {int(x1)} Y: {int(y1)}"
+                print(f"x : {int(x1)} | y: {int(x2)}")
                 cv2.putText(
                     annotated_frame, 
                     text_coord, 

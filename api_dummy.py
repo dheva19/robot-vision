@@ -6,8 +6,15 @@ import time
 import random
 
 app = Flask(__name__)
-# CORS(app)
+# Izinkan akses dari Laravel React
 CORS(app, origins=["http://127.0.0.1:8000", "http://localhost:8000"])
+
+# --- State Global untuk Data Dummy Stabil ---
+robot_state = {
+    "yaw": 0.0,
+    "pitch": 0.0,
+    "roll": 0.0
+}
 
 model = YOLO('ms_bima.pt')
 print("Model loaded successfully")
@@ -27,6 +34,7 @@ def gen_frames():
         if not success:
             break
         
+        # imgsz kecil untuk performa, conf 0.50 sesuai permintaan
         results = model(frame, imgsz=128, conf=0.50, verbose=False)
         
         frame_count += 1
@@ -78,19 +86,35 @@ def video_feed():
 
 @app.route('/sensor_data')
 def sensor_data():
+    global robot_state
+    
+    # 1. Update IMU dengan Random Walk (Perubahan kecil agar stabil)
+    # Yaw bisa berputar bebas, tapi Pitch & Roll biasanya stabil pada robot SAR
+    robot_state["yaw"] += random.uniform(-1.0, 1.0)
+    robot_state["pitch"] += random.uniform(-0.3, 0.3)
+    robot_state["roll"] += random.uniform(-0.3, 0.3)
+
+    # 2. Batasi (Clamping) agar tidak miring berlebihan (Robot tidak terbalik)
+    robot_state["pitch"] = max(-10.0, min(10.0, robot_state["pitch"]))
+    robot_state["roll"] = max(-10.0, min(10.0, robot_state["roll"]))
+    
+    # Reset Yaw jika melebihi putaran penuh
+    if abs(robot_state["yaw"]) > 180:
+        robot_state["yaw"] = -180 if robot_state["yaw"] > 0 else 180
+
     data = {
         "ultrasonic": {
-            "sensor_1": round(random.uniform(10.0, 100.0), 2),
-            "sensor_2": round(random.uniform(10.0, 100.0), 2),
-            "sensor_3": round(random.uniform(10.0, 100.0), 2),
-            "sensor_4": round(random.uniform(10.0, 100.0), 2),
-            "sensor_5": round(random.uniform(10.0, 100.0), 2),
-            "sensor_6": round(random.uniform(10.0, 100.0), 2)
+            "sensor_1": round(random.uniform(30.0, 60.0), 2),
+            "sensor_2": round(random.uniform(30.0, 60.0), 2),
+            "sensor_3": round(random.uniform(10.0, 30.0), 2), # Simulasi rintangan dekat
+            "sensor_4": round(random.uniform(80.0, 100.0), 2),
+            "sensor_5": round(random.uniform(40.0, 50.0), 2),
+            "sensor_6": round(random.uniform(90.0, 100.0), 2)
         },
         "imu": {
-            "yaw": round(random.uniform(-180.0, 180.0), 2),
-            "pitch": round(random.uniform(-90.0, 90.0), 2),
-            "roll": round(random.uniform(-180.0, 180.0), 2)
+            "yaw": round(robot_state["yaw"], 2),
+            "pitch": round(robot_state["pitch"], 2),
+            "roll": round(robot_state["roll"], 2)
         },
         "timestamp": time.time()
     }
